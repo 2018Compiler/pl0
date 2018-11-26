@@ -49,10 +49,50 @@ void getch(void)
 	ch = line[++cc];
 } // getch
 
+
+typedef struct{
+    int storedSym;
+    char storedID[MAXIDLEN + 1];
+    int storedNum;
+}storedSym;
+storedSym* storedSym1, * storedSym2;
+int restoreSymFlag = 0;
+
+//////////////////////////////////////////////////////////////////////
+// store read symbols
+storedSym store_symbol(){
+    storedSym temp;
+    temp.storedSym = sym;
+    strcpy(temp.storedID, id);
+    temp.storedNum = num;
+    return temp;
+} // store_symbol
+
+// load a read symbol
+void load_symbol(storedSym *temp){
+    sym = temp->storedSym;
+    num = temp->storedNum;
+    strcpy(id, temp->storedID);
+} // load_symbol
+
+
 //////////////////////////////////////////////////////////////////////
 // gets a symbol from input stream.
 void getsym(void)
 {
+    if(restoreSymFlag){
+        restoreSymFlag = 0;
+        load_symbol(storedSym2);
+        return;
+    }
+//    if(loadStoredSymFlag){
+//        loadStoredSymFlag = 0;
+//        restoreSymFlag = 1;
+//        storedSym temp = store_symbol();
+//        storedSym2 = &temp;
+//        load_symbol(storedSym1);
+//        return;
+//    }
 	int i, k;
 	char a[MAXIDLEN + 1];
 
@@ -149,11 +189,13 @@ void getsym(void)
 		}
 		else
 		{
-			printf("Fatal Error: Unknown character.\n");
+			printf("Fatal Error: Unknown character.\n %c", ch);
 			exit(1);
 		}
 	}
 } // getsym
+
+
 
 //////////////////////////////////////////////////////////////////////
 // generates (assembles) an instruction.
@@ -467,30 +509,59 @@ void statement(symset fsys)
 
 	if (sym == SYM_IDENTIFIER)
 	{ // variable assignment
-		mask* mk;
-		if (! (i = position(id)))
-		{
-			error(11); // Undeclared identifier.
+	    int masknum = 10, j = 0, assginflag = 0;
+		mask** mklist;
+        mklist = (mask**)malloc(masknum * sizeof(mask*));
+		do{
+		    if(sym == SYM_IDENTIFIER){
+                if (! (i = position(id)))
+                {
+                    error(11); // Undeclared identifier.
+                }
+                else if (table[i].kind != ID_VARIABLE)
+                {
+                    error(12); // Illegal assignment.
+                    i = 0;
+                }
+                else{
+                    if(j >= masknum){
+                        masknum = masknum + 10;
+                        mklist = (mask**)realloc(mklist ,masknum * sizeof(mask*));
+                    }
+                    mklist[j++] = (mask*)&table[i];
+                }
+                storedSym temp = store_symbol();
+                storedSym1 = &temp;
+                getsym();
+		    }
+            if (sym == SYM_BECOMES)
+            {
+                getsym();
+                assginflag = 1;
+            }
+            else
+            {
+                if(assginflag){
+                    storedSym temp = store_symbol();
+                    storedSym2 = &temp;
+                    load_symbol(storedSym1);
+                    restoreSymFlag = 1;
+                    j--;
+                    break;
+                }
+                else error(13); // ':=' expected.
+            }
 		}
-		else if (table[i].kind != ID_VARIABLE)
-		{
-			error(12); // Illegal assignment.
-			i = 0;
-		}
-		getsym();
-		if (sym == SYM_BECOMES)
-		{
-			getsym();
-		}
-		else
-		{
-			error(13); // ':=' expected.
-		}
+		while(sym == SYM_IDENTIFIER);
 		expression(fsys);
-		mk = (mask*) &table[i];
-		if (i)
+		if (j)
 		{
-			gen(STO, level - mk->level, mk->address);
+		    for(; j > 0; j--){
+		        gen(STO, level - mklist[j-1]->level, mklist[j-1]->address);
+                if(j > 1){
+                    gen(LOD, level - mklist[j-1]->level, mklist[j-1]->address);
+                }
+		    }
 		}
 	}
 	else if (sym == SYM_CALL)
