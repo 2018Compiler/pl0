@@ -85,14 +85,6 @@ void getsym(void)
         load_symbol(storedSym2);
         return;
     }
-//    if(loadStoredSymFlag){
-//        loadStoredSymFlag = 0;
-//        restoreSymFlag = 1;
-//        storedSym temp = store_symbol();
-//        storedSym2 = &temp;
-//        load_symbol(storedSym1);
-//        return;
-//    }
 	int i, k;
 	char a[MAXIDLEN + 1];
 
@@ -177,6 +169,14 @@ void getsym(void)
 			sym = SYM_LES;     // <
 		}
 	}
+	else if (ch == '='){
+	    getch();
+	    if (ch == '='){
+	        sym = SYM_EQU;
+	        getch();
+	    }
+	    else error(20);
+	}
 	else
 	{ // other tokens
 		i = NSYM;
@@ -189,7 +189,7 @@ void getsym(void)
 		}
 		else
 		{
-			printf("Fatal Error: Unknown character.\n %c", ch);
+			printf("Fatal Error: Unknown character.\n");
 			exit(1);
 		}
 	}
@@ -609,7 +609,18 @@ void statement(symset fsys)
 		cx1 = cx;
 		gen(JPC, 0, 0);
 		statement(fsys);
-		code[cx1].a = cx;	
+		test(fsys, phi, 19);
+		getsym();
+		int cx3 = cx, cx4;
+		if (sym == SYM_ELSE){
+		    cx4 = cx;
+		    gen(JMP, 0, 0);
+		    getsym();
+		    statement(fsys);
+		    code[cx4].a = cx;
+		    cx3++;
+		}
+		code[cx1].a = cx3;
 	}
 	else if (sym == SYM_BEGIN)
 	{ // block
@@ -946,12 +957,12 @@ void main ()
 	}
 
 	phi = createset(SYM_NULL);
-	relset = createset(SYM_EQU, SYM_NEQ, SYM_LES, SYM_LEQ, SYM_GTR, SYM_GEQ, SYM_NULL);
+	relset = createset(SYM_EQU, SYM_NEQ, SYM_LES, SYM_LEQ, SYM_GTR, SYM_GEQ, SYM_NULL);	//Relation Set
 	
 	// create begin symbol sets
-	declbegsys = createset(SYM_CONST, SYM_VAR, SYM_PROCEDURE, SYM_NULL);
-	statbegsys = createset(SYM_BEGIN, SYM_CALL, SYM_IF, SYM_WHILE, SYM_NULL);
-	facbegsys = createset(SYM_IDENTIFIER, SYM_NUMBER, SYM_LPAREN, SYM_MINUS, SYM_NULL);
+	declbegsys = createset(SYM_CONST, SYM_VAR, SYM_PROCEDURE, SYM_NULL);					//Declaration Beginnging Symbol Set
+	statbegsys = createset(SYM_BEGIN, SYM_CALL, SYM_IF, SYM_WHILE, SYM_NULL);       		//Statement Beginning Symbol Set
+	facbegsys = createset(SYM_IDENTIFIER, SYM_NUMBER, SYM_LPAREN, SYM_MINUS, SYM_NULL);	//Factor Beginning Symbol Set
 
 	err = cc = cx = ll = 0; // initialize global variables
 	ch = ' ';
@@ -981,6 +992,7 @@ void main ()
 			fwrite(&code[i], sizeof(instruction), 1, hbin);
 		fclose(hbin);
 	}
+	printf("Compile Complete.");
 	if (err == 0)
 		interpret();
 	else
