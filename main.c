@@ -169,14 +169,6 @@ void getsym(void)
 			sym = SYM_LES;     // <
 		}
 	}
-	else if (ch == '='){
-	    getch();
-	    if (ch == '='){
-	        sym = SYM_EQU;
-	        getch();
-	    }
-	    else error(20);
-	}
 	else
 	{ // other tokens
 		i = NSYM;
@@ -610,6 +602,8 @@ void statement(symset fsys)
 		gen(JPC, 0, 0);
 		statement(fsys);
 		test(fsys, phi, 19);
+        storedSym temp = store_symbol();
+        storedSym1 = &temp;
 		getsym();
 		int cx3 = cx, cx4;
 		if (sym == SYM_ELSE){
@@ -619,6 +613,12 @@ void statement(symset fsys)
 		    statement(fsys);
 		    code[cx4].a = cx;
 		    cx3++;
+		}
+		else{
+            storedSym temp2 = store_symbol();
+            storedSym2 = &temp2;
+            load_symbol(storedSym1);
+            restoreSymFlag = 1;
 		}
 		code[cx1].a = cx3;
 	}
