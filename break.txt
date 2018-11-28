@@ -1,0 +1,11 @@
+var i, j;
+begin
+i := 0;
+while i < 10 do
+begin
+i := i + 1;
+if i = 3 then
+break;
+end;
+i := 10;
+end.

@@ -555,6 +555,7 @@ void statement(symset fsys)
                 }
 		    }
 		}
+		free(mklist);
 	}
 	else if (sym == SYM_CALL)
 	{ // procedure call
@@ -653,7 +654,9 @@ void statement(symset fsys)
 	}
 	else if (sym == SYM_WHILE)
 	{ // while statement
+		while_count++;
 		cx1 = cx;
+		continue_cx[while_count] = cx;
 		getsym();
 		set1 = createset(SYM_DO, SYM_NULL);
 		set = uniteset(set1, fsys);
@@ -673,6 +676,29 @@ void statement(symset fsys)
 		statement(fsys);
 		gen(JMP, 0, cx1);
 		code[cx2].a = cx;
+		for (int i = 0; break_cx[while_count][i]; i++)
+		{
+			code[break_cx[while_count][i]].a = cx;
+			break_cx[while_count][i] = 0;
+		}
+		while_count--;
+	}
+	else if (sym == SYM_CONTINUE)
+	{
+		if (while_count > 0)
+		{
+			getsym();
+			gen(JMP, 0,continue_cx[while_count]);
+		}
+	}
+	else if (sym == SYM_BREAK)
+	{
+		if (while_count > 0)
+		{
+			getsym();
+			break_cx[while_count][break_num[while_count]++] = cx;
+			gen(JMP, 0, 0);
+		}
 	}
 	test(fsys, phi, 19);
 } // statement
